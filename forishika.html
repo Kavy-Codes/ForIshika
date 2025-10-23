@@ -1,0 +1,354 @@
+<!doctype html>
+<!--
+  forIshika - Single-file romantic LDR website (ready for GitHub Pages)
+  - One scrolling page, cinematic, romantic, modern
+  - Tailwind Play CDN used (no build step)
+  - GSAP for animations
+  - Put this file as index.html in a GitHub repo named `forIshika` and enable GitHub Pages (branch: main)
+
+  Quick deploy:
+  1. Create GitHub repo named `forIshika`.
+  2. Add this index.html to the repo and commit.
+  3. In GitHub: Settings → Pages → Deploy from main branch → Save.
+
+  Customization:
+  - Edit the JS config at the top of the <script id="CONFIG"> block to personalize names, dates, messages, and media file names.
+  - Add audio files inside `assets/` (e.g. `assets/ambient.mp3` and `assets/lullaby.mp3`).
+  - Add memory images inside `assets/mem1.jpg`, etc., and update the memories array in the config.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>forIshika — Our Universe</title>
+
+    <!-- Tailwind Play CDN for quick styling (no build) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" integrity="sha512-iVgB2i+8cKqB5WqGgqgQp1r9xQ2kg+YQ9q3p7+Q5q1V7Z6wz8f8p9kQb1zv/j9g3UY2xYw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+      :root{
+        --bg:#050406;
+        --accent:#c41b2b; /* crimson */
+        --muted:#bfbfbf;
+      }
+      html,body{height:100%;}
+      body{
+        background:linear-gradient(180deg,#040305 0%, #07101a 60%);
+        color:#fff;
+        font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto;
+        -webkit-font-smoothing:antialiased;
+        -moz-osx-font-smoothing:grayscale;
+      }
+      .glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.03)}
+      .soft-glow{box-shadow:0 6px 30px rgba(196,27,43,0.12)}
+      .accent{color:var(--accent)}
+      /* starfield */
+      #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+      .star{position:absolute;border-radius:50%;background:rgba(255,255,255,0.9);}
+      /* heart button */
+      .pulse{animation:pulse 1.2s infinite ease-in-out}
+      @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+      /* timeline scroll */
+      .timeline::-webkit-scrollbar{height:8px}
+      .timeline::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:999px}
+    </style>
+  </head>
+  <body class="antialiased relative overflow-x-hidden">
+
+    <!-- STARFIELD CANVAS -->
+    <canvas id="stars" aria-hidden="true"></canvas>
+
+    <!-- MAIN CONTAINER -->
+    <main class="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-24">
+
+      <!-- HERO / LANDING -->
+      <section id="hero" class="min-h-screen flex items-center">
+        <div class="w-full grid grid-cols-12 gap-6">
+          <div class="col-span-12 lg:col-span-7 flex flex-col justify-center">
+            <div class="glass p-8 rounded-2xl soft-glow">
+              <h1 class="text-4xl md:text-6xl font-extrabold leading-tight" id="heroTitle">
+                For <span id="partnerName" class="accent">Ishika</span>
+              </h1>
+              <p class="mt-4 text-lg md:text-xl text-gray-300" id="heroLine">A private universe where love closes the distance.</p>
+
+              <div class="mt-6 flex gap-3 items-center">
+                <button id="enterBtn" class="px-6 py-3 rounded-full bg-gradient-to-r from-[#9b1220] to-[#c41b2b] font-semibold shadow-lg transform hover:scale-[1.02]">Enter our world ❤️</button>
+
+                <button id="musicToggle" class="px-4 py-2 rounded-full border border-white/10">Music: <span id="musicState">Off</span></button>
+
+                <div class="ml-auto text-right text-sm text-gray-400">
+                  <div id="localClocks">Rae Bareli: -- | Delhi: --</div>
+                  <div class="mt-1 text-xs">Private · For your eyes only</div>
+                </div>
+              </div>
+
+              <div class="mt-6 text-xs text-gray-500">Tip: press <strong>K I</strong> anywhere to unlock a secret.</div>
+            </div>
+
+            <!-- quick notes -->
+            <div class="mt-8 flex gap-4">
+              <div class="glass p-4 rounded-xl w-1/2">
+                <div class="text-xs text-gray-400">Next Meet</div>
+                <div id="countdownSmall" class="mt-1 text-lg font-semibold">-- days</div>
+              </div>
+              <div class="glass p-4 rounded-xl w-1/2">
+                <div class="text-xs text-gray-400">Days Together</div>
+                <div id="daysSince" class="mt-1 text-lg font-semibold">-- days</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="col-span-12 lg:col-span-5 flex items-center justify-center">
+            <!-- visual heart card -->
+            <div class="glass p-6 rounded-3xl w-full max-w-md text-center soft-glow">
+              <div id="floatingHeart" class="mx-auto w-44 h-44 flex items-center justify-center rounded-full bg-black/40 border border-white/5">
+                <svg id="heartSVG" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-20 h-20 text-red-500" fill="currentColor"><path d="M12 21s-7-4.35-9.5-7.02C-.09 9.78 3.23 4 8 4c2.48 0 3.5 1.64 4 2.5.5-.86 1.52-2.5 4-2.5 4.77 0 8.09 5.78 5.5 9.98C19 16.65 12 21 12 21z"/></svg>
+              </div>
+              <div class="mt-4 text-sm text-gray-300">Tap the heart or press <kbd class="px-2 py-1 rounded bg-white/5">H</kbd> to send a virtual hug</div>
+              <button id="hugBtn" class="mt-4 px-5 py-2 rounded-full bg-gradient-to-r from-[#8b0f17] to-[#c41b2b]">Hug Me</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- MESSAGES / HEART PAGE -->
+      <section id="heartpage" class="min-h-screen flex flex-col items-center">
+        <div class="w-full glass rounded-3xl p-8 soft-glow">
+          <h2 class="text-2xl font-semibold">Letter from me</h2>
+          <p class="mt-4 text-gray-300" id="dailyMessage">Loading a message that smells like you...</p>
+
+          <div class="mt-6 flex gap-3">
+            <button id="newMsg" class="px-4 py-2 rounded-full border border-white/10">Another thought</button>
+            <button id="openLetters" class="px-4 py-2 rounded-full border border-white/10">Open Letters</button>
+            <button id="openJournal" class="px-4 py-2 rounded-full border border-white/10">Memory Garden</button>
+
+            <div class="ml-auto text-sm text-gray-400">Swipe / Scroll — It's all one page.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TIMELINE / MEMORY GARDEN -->
+      <section id="memories" class="min-h-screen">
+        <h3 class="text-xl font-semibold mb-4">Memory Garden</h3>
+        <div class="glass p-6 rounded-2xl overflow-hidden">
+          <div class="timeline flex gap-4 overflow-x-auto py-4" id="timelineContainer">
+            <!-- memory cards inserted by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- NIGHT / GOODNIGHT ROOM -->
+      <section id="goodnight" class="min-h-screen flex items-center">
+        <div class="glass rounded-3xl p-8 soft-glow w-full">
+          <h3 class="text-2xl font-semibold">Goodnight Room</h3>
+          <p class="mt-3 text-gray-300">A soft space to end the day together. Turn on the lullaby and press the moon.</p>
+
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="col-span-2">
+              <div id="moonScene" class="h-64 rounded-xl glass flex items-center justify-center relative overflow-hidden">
+                <div id="moon" class="w-36 h-36 rounded-full bg-white/10 flex items-center justify-center text-2xl">🌙</div>
+                <div id="goodnightText" class="absolute bottom-6 text-center w-full text-gray-200">Goodnight, my love. Sleep in peace — I'm here.</div>
+              </div>
+            </div>
+            <div>
+              <div class="glass p-4 rounded-xl">
+                <div class="text-sm text-gray-400">Lullaby</div>
+                <div class="mt-4 flex gap-2">
+                  <button id="lullabyToggle" class="px-4 py-2 rounded-full border border-white/10">Play</button>
+                  <button id="dmNight" class="px-3 py-2 rounded-full border border-white/10">Send Night Note</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- SECRET GARDEN (hidden until unlocked) -->
+      <section id="secret" class="min-h-screen hidden">
+        <div class="glass p-8 rounded-3xl soft-glow">
+          <h3 class="text-2xl font-bold">The Secret Garden</h3>
+          <p class="mt-2 text-gray-300">Locked messages & private promises — only for her.</p>
+          <div id="secretContent" class="mt-4 space-y-4 text-gray-200">
+            <!-- filled by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER / COUNTERS -->
+      <footer class="py-8 text-center text-gray-400">
+        <div class="max-w-2xl mx-auto">
+          <div id="fullCountdown" class="text-2xl font-medium">Next meet: --</div>
+          <div class="mt-3 text-sm">Made with a burning, honest heart — by <span id="authorName">Your</span>.</div>
+        </div>
+      </footer>
+
+    </main>
+
+    <!-- AUDIO ELEMENTS (place files in /assets and update config) -->
+    <audio id="ambientAudio" loop preload="auto">
+      <!-- replace src with your file path: assets/ambient.mp3 -->
+      <source src="assets/ambient.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="lullabyAudio" loop preload="auto">
+      <source src="assets/lullaby.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="hugSound" preload="auto">
+      <source src="assets/hug.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- CONFIG & SCRIPT -->
+    <script id="CONFIG">
+      // Personalize these values
+      window.CONFIG = {
+        partnerName: 'Ishika',
+        authorName: 'Kavy',
+        nextMeetDate: '2026-02-14T18:00:00', // YYYY-MM-DDTHH:MM:SS (change to your real meet datetime)
+        firstMetDate: '2025-10-08', // for days-since counter
+        timezoneA: 'Asia/Kolkata', // Rae Bareli
+        timezoneB: 'Asia/Kolkata', // Delhi (same tz, shown for symbolism)
+        unlockKeySequence: ['k','i'], // keys to open secret garden
+        messages: [
+          "If distance were water I'd swim forever to reach you.",
+          "Your voice is my favorite frequency.",
+          "Even silence with you feels like company.",
+          "I keep you in my chest like a tiny light.",
+          "Sleep now — I am guarding your dreams."
+        ],
+        memories: [
+          {date:'2025-10-08',title:'First message',desc:'You said hi and I smiled all day.',img:'assets/mem1.jpg'},
+          {date:'2025-10-15',title:'First Call',desc:'Your laugh sounded like home.',img:'assets/mem2.jpg'},
+          {date:'2025-10-21',title:'Midnight Talk',desc:'We talked until sunrise.',img:'assets/mem3.jpg'}
+        ],
+        secretNotes: [
+          {title:'Promise',text:'I will come for you. Always.'},
+          {title:'Poem',text:'Under same sky, I hold you in thought.'}
+        ]
+      }
+    </script>
+
+    <script>
+      // Basic utilities
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+      // CONFIG
+      const cfg = window.CONFIG;
+      $('#partnerName').textContent = cfg.partnerName;
+      $('#authorName').textContent = cfg.authorName;
+
+      // Stars canvas
+      const stars = document.getElementById('stars');
+      const ctx = stars.getContext('2d');
+      function resizeStars(){stars.width = innerWidth; stars.height = innerHeight}
+      resizeStars(); window.addEventListener('resize',resizeStars);
+      const starCount = 120;
+      const sarr = Array.from({length:starCount}).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.4+0.2,a:Math.random()}));
+      function drawStars(){ctx.clearRect(0,0,stars.width,stars.height); for(let s of sarr){ctx.globalAlpha=s.a*0.9; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); s.y -= 0.15; s.x += Math.sin(Date.now()/10000 + s.x)*0.02; s.a = 0.6+0.4*Math.sin((Date.now()+s.x)/2000); if(s.y<0) s.y=stars.height}}
+      setInterval(drawStars,40);
+
+      // Hero enter animation
+      $('#enterBtn').addEventListener('click', ()=>{
+        gsap.to(window, {duration:0.8, scrollTo:{y:window.innerHeight*0.9}, ease:'power2.inOut'});
+      });
+
+      // Music toggle
+      const ambient = $('#ambientAudio');
+      const lullaby = $('#lullabyAudio');
+      const hugSound = $('#hugSound');
+      let musicOn = false;
+      $('#musicToggle').addEventListener('click', ()=>{
+        musicOn = !musicOn; $('#musicState').textContent = musicOn ? 'On' : 'Off';
+        if(musicOn){ambient.volume = 0.25; ambient.play().catch(()=>{});} else {ambient.pause();}
+      });
+
+      // Clocks (show simple local times for symbolism)
+      function updateClocks(){const now = new Date(); $('#localClocks').textContent = `Rae Bareli: ${now.toLocaleTimeString('en-IN')} | Delhi: ${now.toLocaleTimeString('en-IN')}`}
+      setInterval(updateClocks,1000); updateClocks();
+
+      // Countdown
+      function updateCountdown(){const next = new Date(cfg.nextMeetDate); const now=new Date(); const diff=next-now; if(diff>0){const days=Math.floor(diff/86400000); const hrs=Math.floor((diff%86400000)/3600000); const mins=Math.floor((diff%3600000)/60000); $('#fullCountdown').textContent = `Next meet: ${days}d ${hrs}h ${mins}m`; $('#countdownSmall').textContent = `${days} days ${hrs} hrs`; } else {$('#fullCountdown').textContent='Next meet: Today or passed'; $('#countdownSmall').textContent='—'} }
+      setInterval(updateCountdown,60000); updateCountdown();
+
+      // Days since
+      function updateDaysSince(){const start = new Date(cfg.firstMetDate); const now = new Date(); const days = Math.floor((now-start)/(86400000)); $('#daysSince').textContent = `${days} days`; }
+      updateDaysSince();
+
+      // Messages
+      function pickMessage(){const m = cfg.messages[Math.floor(Math.random()*cfg.messages.length)]; $('#dailyMessage').textContent = m; }
+      pickMessage(); $('#newMsg').addEventListener('click', ()=>{pickMessage(); gsap.from('#dailyMessage',{y:10,opacity:0,duration:0.5})});
+
+      // Timeline render
+      function renderMemories(){const container = $('#timelineContainer'); container.innerHTML=''; for(const mem of cfg.memories){const el = document.createElement('div'); el.className='min-w-[260px] glass p-4 rounded-xl flex-shrink-0'; el.innerHTML = `
+        <div class="h-44 rounded-lg overflow-hidden bg-black/30 flex items-center justify-center">${mem.img ? `<img src="${mem.img}" alt="${mem.title}" class="object-cover w-full h-full"/>` : '<div class="text-gray-400">No image</div>'}</div>
+        <div class="mt-3">
+          <div class="text-xs text-gray-400">${mem.date}</div>
+          <div class="font-semibold mt-1">${mem.title}</div>
+          <div class="text-sm text-gray-300 mt-1">${mem.desc}</div>
+        </div>
+      `; container.appendChild(el);} }
+      renderMemories();
+
+      // Hug interaction
+      function doHug(){const heart = $('#floatingHeart'); gsap.fromTo('#floatingHeart',{scale:0.9,opacity:0.9},{scale:1.06,duration:0.45,yoyo:true,repeat:1,ease:'power1.inOut'}); // glow
+        gsap.to('#heartSVG',{y:-6,repeat:1,yoyo:true,duration:0.2});
+        // screen warm
+        gsap.fromTo('body',{background:'#07101a'},{background:'linear-gradient(180deg,#2b0508 0%, #19060a 60%)',duration:0.8});
+        try{hugSound.volume=0.9; hugSound.play().catch(()=>{});}catch(e){}
+        // temporary message
+        const orig = $('#dailyMessage').textContent; $('#dailyMessage').textContent = `Hug sent — hold tight, ${cfg.partnerName}.`; setTimeout(()=>$('#dailyMessage').textContent=orig,4000);
+      }
+      $('#hugBtn').addEventListener('click', doHug);
+      document.addEventListener('keydown', (e)=>{if(e.key.toLowerCase()==='h') doHug();});
+
+      // Moon / Goodnight toggles
+      $('#moon').addEventListener('click', ()=>{gsap.to('#moon',{scale:1.12,duration:0.3,yoyo:true,repeat:1}); gsap.to('#goodnightText',{y:-6,duration:0.6,repeat:1,yoyo:true});});
+      let lullabyOn=false;
+      $('#lullabyToggle').addEventListener('click', ()=>{lullabyOn = !lullabyOn; $('#lullabyToggle').textContent = lullabyOn ? 'Pause' : 'Play'; if(lullabyOn){lullaby.volume=0.35; lullaby.play().catch(()=>{});} else {lullaby.pause();}});
+
+      // DM Night (save a night note to secret area)
+      $('#dmNight').addEventListener('click', ()=>{
+        const note = prompt('Write a night note to save in the secret garden for her:','Goodnight, my love.');
+        if(note){cfg.secretNotes.unshift({title:'Night Note',text:note}); alert('Saved to Secret Garden. (She must unlock it with the secret keys)');}
+      });
+
+      // Secret garden unlocking via key sequence
+      let kseq = [];
+      document.addEventListener('keydown', (e)=>{kseq.push(e.key.toLowerCase()); if(kseq.slice(-cfg.unlockKeySequence.length).join('')===cfg.unlockKeySequence.join('')){openSecret(); kseq=[];} if(kseq.length>10) kseq.shift();});
+      function openSecret(){const sec = $('#secret'); sec.classList.remove('hidden'); sec.scrollIntoView({behavior:'smooth'}); renderSecret();}
+      function renderSecret(){const container = $('#secretContent'); container.innerHTML=''; for(const s of cfg.secretNotes){const el = document.createElement('div'); el.className='p-4 glass rounded-lg'; el.innerHTML = `<div class="font-semibold">${s.title}</div><div class="text-sm text-gray-300 mt-1">${s.text}</div>`; container.appendChild(el);} }
+
+      // Open Letters (flipbook) — simple modal-like area
+      $('#openLetters').addEventListener('click', ()=>{const text = prompt('Write a new letter to Ishika:','My love...'); if(text){cfg.messages.unshift(text); pickMessage(); alert('Letter added. It will show in the life of messages.'); renderLetters();}});
+      function renderLetters(){/* could extend: build a flipbook */}
+
+      // Open Journal => scroll to memories
+      $('#openJournal').addEventListener('click', ()=>{$('#memories').scrollIntoView({behavior:'smooth'});});
+
+      // Keyboard shortcuts: J for journal
+      document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='j'){ $('#memories').scrollIntoView({behavior:'smooth'}); } });
+
+      // Initial subtle animations
+      gsap.from('#heroTitle',{y:20,opacity:0,duration:1});
+      gsap.from('#heroLine',{y:10,opacity:0,duration:1,delay:0.2});
+      gsap.from('#floatingHeart',{scale:0.8,opacity:0,duration:0.9,delay:0.4});
+
+      // Small accessibility: ensure buttons focus styles
+      $$('button').forEach(b=>b.addEventListener('keydown', (e)=>{ if(e.key==='Enter') b.click(); }));
+
+      // Dev helper: load sample assets if missing
+      // (If you want ambient music immediately, upload assets/ambient.mp3 and assets/lullaby.mp3 to your repo.)
+
+      // End of script
+    </script>
+
+  </body>
+</html>
